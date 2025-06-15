@@ -1,4 +1,4 @@
-import { PrismaClient } from "../src/generated/prisma/client.js";
+import { PrismaClient } from "./generated/prisma/client.js";
 import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
