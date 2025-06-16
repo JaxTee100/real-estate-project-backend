@@ -63,9 +63,9 @@ export const register = async (req, res) => {
       userId: user.id,
       name: user.name
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Registration failed" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: `Registration failed ${e}` });
   }
 };
 
