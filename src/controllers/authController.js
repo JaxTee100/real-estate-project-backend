@@ -10,7 +10,7 @@ function generateToken(userId, email) {
       email,
     },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn: "30d" }
   );
   const refreshToken = uuidv4();
   return { accessToken, refreshToken };
