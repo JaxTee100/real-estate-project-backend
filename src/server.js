@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3001;
 
 const corsOptions = {
   origin: [
-    "https://real-estate-project-client-iota.vercel.app",
+    "https://real-estate-project-client-ns6m0aowy-tobias-projects-16beace5.vercel.app/",
     "http://localhost:3000"
   ],
   credentials: true,
