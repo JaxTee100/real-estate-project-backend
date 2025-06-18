@@ -11,14 +11,10 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const corsOptions = {
-  origin: [
-    "https://real-estate-project-client-ns6m0aowy-tobias-projects-16beace5.vercel.app/",
-    "http://localhost:3000"
-  ],
+  origin: process.env.ORIGIN || "http://localhost:3000",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
