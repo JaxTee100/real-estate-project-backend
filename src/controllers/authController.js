@@ -3,6 +3,12 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { v4 as uuidv4 } from "uuid";
 
+// List of allowed origins (your frontend domains)
+const allowedOrigins = [
+  'https://real-estate-project-client-iota.vercel.app',
+  'http://localhost:3000' // for local development
+];
+
 function generateToken(userId, email) {
   const accessToken = jwt.sign(
     {
@@ -16,27 +22,37 @@ function generateToken(userId, email) {
   return { accessToken, refreshToken };
 }
 
-async function setTokens(
-  res,
-  accessToken,
-  refreshToken
-) {
+async function setTokens(res, accessToken, refreshToken, origin) {
+  // Set CORS headers based on the request origin
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 60 * 60 * 1000,
+    sameSite: "none", // Important for cross-domain
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   });
+  
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60,
+    sameSite: "none", // Important for cross-domain
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   });
 }
 
 export const register = async (req, res) => {
   try {
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
     const { name, email, password } = req.body;
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -69,8 +85,14 @@ export const register = async (req, res) => {
   }
 };
 
-export const login = async (req, res)=> {
+export const login = async (req, res) => {
   try {
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
     const { email, password } = req.body;
     const extractCurrentUser = await prisma.user.findUnique({
       where: { email },
@@ -84,11 +106,10 @@ export const login = async (req, res)=> {
         success: false,
         error: "Invalid email or password",
       });
-
       return;
     }
 
-    //create our access and refreshtoken
+    // Create our access and refresh token
     const { accessToken, refreshToken } = generateToken(
       extractCurrentUser.id,
       extractCurrentUser.email
@@ -99,9 +120,8 @@ export const login = async (req, res)=> {
       data: { refreshToken },
     });
 
-
-    //set out tokens
-    await setTokens(res, accessToken, refreshToken);
+    // Set our tokens
+    await setTokens(res, accessToken, refreshToken, origin);
     res.status(200).json({
       success: true,
       message: "Login successfully",
@@ -109,8 +129,6 @@ export const login = async (req, res)=> {
         id: extractCurrentUser.id,
         name: extractCurrentUser.name,
         email: extractCurrentUser.email,
-        refreshToken: refreshToken,
-        accessToken: accessToken,
       },
     });
   } catch (error) {
@@ -119,11 +137,14 @@ export const login = async (req, res)=> {
   }
 };
 
-export const refreshAccessToken = async (
-  req,
-  res
-) => {
-  const refreshToken = req.cookies.refreshToken
+export const refreshAccessToken = async (req, res) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) {
     res.status(401).json({
       success: false,
@@ -151,8 +172,9 @@ export const refreshAccessToken = async (
       user.id,
       user.email,
     );
-    //set out tokens
-    await setTokens(res, accessToken, newRefreshToken);
+    
+    // Set our tokens
+    await setTokens(res, accessToken, newRefreshToken, origin);
     res.status(200).json({
       success: true,
       message: "Refresh token refreshed successfully",
@@ -164,10 +186,37 @@ export const refreshAccessToken = async (
 };
 
 export const logout = async (req, res) => {
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  res.clearCookie("accessToken", {
+    domain: process.env.COOKIE_DOMAIN || undefined,
+    sameSite: "none",
+    secure: process.env.NODE_ENV === "production",
+  });
+  res.clearCookie("refreshToken", {
+    domain: process.env.COOKIE_DOMAIN || undefined,
+    sameSite: "none",
+    secure: process.env.NODE_ENV === "production",
+  });
+  
   res.json({
     success: true,
     message: "User logged out successfully",
   });
+};
+
+// Add this OPTIONS handler for CORS preflight requests
+export const optionsHandler = (req, res) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.status(200).end();
 };
