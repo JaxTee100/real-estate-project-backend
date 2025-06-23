@@ -5,7 +5,6 @@ import {
   refreshAccessToken,
   register,
 } from "../controllers/authController.js";
-import { clientHouses } from "../controllers/houseController.js";
 
 const router = express.Router();
 

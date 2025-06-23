@@ -22,36 +22,32 @@ function generateToken(userId, email) {
   return { accessToken, refreshToken };
 }
 
-async function setTokens(res, accessToken, refreshToken, origin) {
-  // Set CORS headers based on the request origin
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
+async function setTokens(
+  res,
+  accessToken,
+  refreshToken
+) {
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "none", // Important for cross-domain
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    sameSite: "strict",
+    maxAge: 60 * 60 * 1000,
   });
-  
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "none", // Important for cross-domain
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    sameSite: "strict",
+    maxAge: 7 * 24 * 60 * 60,
   });
 }
 
 export const register = async (req, res) => {
   try {
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // const origin = req.headers.origin;
+    // if (allowedOrigins.includes(origin)) {
+    //   res.setHeader('Access-Control-Allow-Origin', origin);
+    // }
+    // res.setHeader('Access-Control-Allow-Credentials', 'true');
     
     const { name, email, password } = req.body;
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -87,11 +83,7 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    }
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
     
     const { email, password } = req.body;
     const extractCurrentUser = await prisma.user.findUnique({
@@ -121,7 +113,7 @@ export const login = async (req, res) => {
     });
 
     // Set our tokens
-    await setTokens(res, accessToken, refreshToken, origin);
+    await setTokens(res, accessToken, refreshToken);
     res.status(200).json({
       success: true,
       message: "Login successfully",
@@ -130,6 +122,8 @@ export const login = async (req, res) => {
         name: extractCurrentUser.name,
         email: extractCurrentUser.email,
       },
+      token: accessToken,
+      refreshToken: refreshToken
     });
   } catch (error) {
     console.error(error);

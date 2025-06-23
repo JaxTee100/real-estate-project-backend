@@ -4,10 +4,20 @@ import cloudinary from "../config/cloudinary.js";
 
 export const createHouse = async (req, res) => {
     try {
-        const { address, price, rooms, floors, bathrooms, estatetype, bathroomType, about, area, features} = req.body;
+        const { address, price, rooms, floors, bathrooms, estatetype, bathroomType, about, area, features } = req.body;
         const files = req.files || [];
+        const userId = req.user?.id; // Assuming user is authenticated
+        console.log("User ID in creating house:", userId);
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized: Missing user ID",
+            });
+        }
 
         const uploadResults = await Promise.all(
+
             files.map((file) =>
                 cloudinary.uploader.upload(file.path, {
                     folder: "houses",
@@ -21,16 +31,17 @@ export const createHouse = async (req, res) => {
         }));
 
         let parsedFeatures = [];
+        if (typeof features === 'string') {
+            try {
+                parsedFeatures = JSON.parse(features);
+            } catch {
+                parsedFeatures = [features];
+            }
+        } else if (Array.isArray(features)) {
+            parsedFeatures = features;
+        }
 
-if (typeof features === 'string') {
-  try {
-    parsedFeatures = JSON.parse(features); // handle stringified JSON
-  } catch {
-    parsedFeatures = [features]; // fallback to single string
-  }
-} else if (Array.isArray(features)) {
-  parsedFeatures = features;
-}
+
 
         const newHouse = await prisma.house.create({
             data: {
@@ -44,11 +55,24 @@ if (typeof features === 'string') {
                 area: parseFloat(area),
                 about,
                 features: parsedFeatures,
+
+                user: {
+                    connect: { id: userId }
+                },
                 images: {
                     create: imageData,
                 },
             },
-            include: { images: true },
+            include: {
+                images: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            },
         });
 
         // Cleanup temp files
@@ -58,31 +82,50 @@ if (typeof features === 'string') {
             }
         });
 
-        console.log("New House Created:", newHouse);
         res.status(201).json({
             success: true,
             message: "House created successfully",
-            house: newHouse
+            house: newHouse,
+            
         });
     } catch (e) {
         console.error(e);
-        res.status(500).json({ success: false, message: "Error creating house", house: null });
+        res.status(500).json({
+            success: false,
+            message: `Error creating house: ${e.message}`,
+            house: null
+        });
     }
 };
 
-
-
 export const getAllHouses = async (req, res) => {
     try {
+        const userId = req.user.id;
+        console.log("User ID in fetching all houses:", userId);
         const houses = await prisma.house.findMany({
-            include: { images: true },
+            where: { userId }, // Only get houses for this user
+            include: {
+                images: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
         });
         res.status(200).json({
             success: true,
-            message: 'fetched houses succesfully',
-            house: houses
+            message: 'Fetched houses successfully',
+            houses,
+            number: houses.length
         });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ success: false, message: "Error fetching houses" });
     }
 };
@@ -90,17 +133,39 @@ export const getAllHouses = async (req, res) => {
 export const getHouseByID = async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.user.id;
+        console.log("User ID in fetching house by ID:", userId);
+
         const house = await prisma.house.findUnique({
             where: { id },
-            include: { images: true },
+            include: {
+                images: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            },
         });
 
         if (!house) {
             return res.status(404).json({ success: false, message: "House not found", house: null });
         }
 
+        // Check ownership
+        if (house.userId !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized access to this house",
+                house: null
+            });
+        }
+
         res.status(200).json({ success: true, message: "House found", house });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ success: false, message: "Error fetching house", house: null });
     }
 };
@@ -108,27 +173,37 @@ export const getHouseByID = async (req, res) => {
 export const updateHouse = async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.user.id;
         const { address, price, rooms, floors, bathrooms, estatetype, bathroomType, area, about, features } = req.body;
         const files = req.files || [];
 
+        // First check if house exists and belongs to user
         const existingHouse = await prisma.house.findUnique({
             where: { id },
             include: { images: true },
         });
 
         if (!existingHouse) {
-            return res.status(404).json({ 
-                success: false, 
+            return res.status(404).json({
+                success: false,
                 message: "House not found",
-                house: null // Explicit null
+                house: null
             });
         }
 
-        // Only delete images if new ones are being uploaded
+        if (existingHouse.userId !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized to update this house",
+                house: null
+            });
+        }
+
+        // Image handling
         let newImages = [];
         if (files.length > 0) {
             // Delete old images
-            const deletePromises = existingHouse.images.map((img) => 
+            const deletePromises = existingHouse.images.map((img) =>
                 cloudinary.uploader.destroy(img.publicId)
             );
             await Promise.all(deletePromises);
@@ -136,7 +211,7 @@ export const updateHouse = async (req, res) => {
 
             // Upload new images
             const uploadResults = await Promise.all(
-                files.map((file) => 
+                files.map((file) =>
                     cloudinary.uploader.upload(file.path, { folder: "houses" })
                 )
             );
@@ -146,19 +221,20 @@ export const updateHouse = async (req, res) => {
             }));
         }
 
+        // Features handling
         let parsedFeatures = existingHouse.features || [];
+        if (features) {
+            if (typeof features === 'string') {
+                try {
+                    parsedFeatures = JSON.parse(features);
+                } catch {
+                    parsedFeatures = [features];
+                }
+            } else if (Array.isArray(features)) {
+                parsedFeatures = features;
+            }
+        }
 
-if (features) {
-  if (typeof features === 'string') {
-    try {
-      parsedFeatures = JSON.parse(features);
-    } catch {
-      parsedFeatures = [features]; // fallback to single item
-    }
-  } else if (Array.isArray(features)) {
-    parsedFeatures = features;
-  }
-}
         const updateData = {
             address: address || existingHouse.address,
             price: !isNaN(parseFloat(price)) ? parseFloat(price) : existingHouse.price,
@@ -182,7 +258,16 @@ if (features) {
                     }
                 })
             },
-            include: { images: true }
+            include: {
+                images: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                }
+            }
         });
 
         // Cleanup temp files
@@ -195,17 +280,14 @@ if (features) {
         res.status(200).json({
             success: true,
             message: "House updated successfully",
-            house: {
-                ...updatedHouse,
-                images: updatedHouse.images || [] // Ensure images array exists
-            }
+            house: updatedHouse
         });
     } catch (e) {
         console.error(e);
-        res.status(500).json({ 
-            success: false, 
+        res.status(500).json({
+            success: false,
             message: "Error updating house",
-            house: null 
+            house: null
         });
     }
 };
@@ -213,9 +295,12 @@ if (features) {
 export const deleteHouse = async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.user.id;
 
-        // Check if the house exists before attempting to delete
-        const existingHouse = await prisma.house.findUnique({ where: { id }, include: { images: true }, });
+        const existingHouse = await prisma.house.findUnique({
+            where: { id },
+            include: { images: true },
+        });
 
         if (!existingHouse) {
             return res.status(404).json({
@@ -224,22 +309,29 @@ export const deleteHouse = async (req, res) => {
             });
         }
 
-        // Optionally delete images from Cloudinary if needed
+        // Check ownership
+        if (existingHouse.userId !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized to delete this house",
+            });
+        }
+
+        // Delete images from Cloudinary
         if (existingHouse.images && existingHouse.images.length > 0) {
             const deleteImagePromises = existingHouse.images.map((img) =>
                 cloudinary.uploader.destroy(img.publicId)
             );
             await Promise.all(deleteImagePromises);
-
             await prisma.houseImage.deleteMany({ where: { houseId: id } });
         }
 
-        // Delete the house
         await prisma.house.delete({ where: { id } });
 
         res.status(200).json({
             success: true,
-            deletedId: id // Explicit confirmation
+            message: "House deleted successfully",
+            deletedId: id
         });
     } catch (e) {
         console.error(e);
@@ -249,10 +341,6 @@ export const deleteHouse = async (req, res) => {
         });
     }
 };
-
-
-
-
 
 export const clientHouses = async (req, res) => {
     try {
@@ -295,6 +383,13 @@ export const clientHouses = async (req, res) => {
                 },
                 include: {
                     images: true,
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true
+                        }
+                    }
                 },
             }),
             prisma.house.count({
@@ -304,7 +399,7 @@ export const clientHouses = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "Client items fetched succesfully",
+            message: "Houses fetched successfully",
             houses,
             currentPage: parseInt(page),
             totalHouses: total,
@@ -312,6 +407,9 @@ export const clientHouses = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({success: false,  error: "Something went wrong." });
+        res.status(500).json({
+            success: false,
+            message: "Something went wrong."
+        });
     }
 };
