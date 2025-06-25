@@ -6,16 +6,16 @@ export const authenticateJwt = (
   res,
   next
 ) => {
-    //get access token from the one saved in the cookies
-  const accessToken = req.cookies?.accessToken;
+  //get access token from the one saved in the cookies
+  const accessToken = req.cookies.accessToken;
+  console.log('accessToken', accessToken);
   if (!accessToken) {
     res
       .status(401)
       .json({ success: false, error: "Access denied, Login to continue" });
-      console.log('authorization failed here')
+    console.log('Authentication failed')
     return;
   }
-  console.log("Access Token");
 
   jwtVerify(accessToken, new TextEncoder().encode(process.env.JWT_SECRET))
     .then((res) => {
@@ -30,8 +30,8 @@ export const authenticateJwt = (
       console.error(e);
 
       // Clear invalid tokens
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
+      res.clearCookie("accessToken");
+      res.clearCookie("refreshToken");
       res
         .status(401)
         .json({ success: false, error: "Access token is not present" });

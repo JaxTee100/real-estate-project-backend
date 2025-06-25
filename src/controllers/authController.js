@@ -22,24 +22,24 @@ function generateToken(userId, email) {
   return { accessToken, refreshToken };
 }
 
-async function setTokens(
-  res,
-  accessToken,
-  refreshToken
-) {
-  res.cookie("accessToken", accessToken, {
+async function setTokens(res, accessToken, refreshToken) {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProduction, // true in prod, false in dev
+    sameSite: isProduction ? 'none' : 'lax', // lax in dev, none in prod
     maxAge: 60 * 60 * 1000,
   });
-  res.cookie("refreshToken", refreshToken, {
+
+  res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 7 * 24 * 60 * 60,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
+
 
 export const register = async (req, res) => {
   try {
@@ -132,11 +132,7 @@ export const login = async (req, res) => {
 };
 
 export const refreshAccessToken = async (req, res) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
   
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) {
