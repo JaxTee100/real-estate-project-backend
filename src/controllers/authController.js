@@ -176,22 +176,10 @@ export const refreshAccessToken = async (req, res) => {
 };
 
 export const logout = async (req, res) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
   
-  res.clearCookie("accessToken", {
-    domain: process.env.COOKIE_DOMAIN || undefined,
-    sameSite: "none",
-    secure: process.env.NODE_ENV === "production",
-  });
-  res.clearCookie("refreshToken", {
-    domain: process.env.COOKIE_DOMAIN || undefined,
-    sameSite: "none",
-    secure: process.env.NODE_ENV === "production",
-  });
+  
+  res.clearCookie("accessToken");
+  res.clearCookie("refreshToken");
   
   res.json({
     success: true,
@@ -199,14 +187,3 @@ export const logout = async (req, res) => {
   });
 };
 
-// Add this OPTIONS handler for CORS preflight requests
-export const optionsHandler = (req, res) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.status(200).end();
-};

@@ -4,7 +4,18 @@ import cloudinary from "../config/cloudinary.js";
 
 export const createHouse = async (req, res) => {
     try {
-        const { address, price, rooms, floors, bathrooms, estatetype, bathroomType, about, area, features } = req.body;
+        const {
+            address,
+            price,
+            rooms,
+            floors,
+            bathrooms,
+            estatetype,
+            bathroomType,
+            about,
+            area,
+            features
+        } = req.body;
         const files = req.files || [];
         const userId = req.user?.id; // Assuming user is authenticated
         console.log("User ID in creating house:", userId);
@@ -51,7 +62,7 @@ export const createHouse = async (req, res) => {
                 floors: parseInt(floors),
                 bathrooms: parseInt(bathrooms),
                 bathroomType,
-                estatetype,
+                estatetype: Array.isArray(estatetype) ? estatetype : [estatetype],
                 area: parseFloat(area),
                 about,
                 features: parsedFeatures,
@@ -86,7 +97,7 @@ export const createHouse = async (req, res) => {
             success: true,
             message: "House created successfully",
             house: newHouse,
-            
+
         });
     } catch (e) {
         console.error(e);
@@ -353,63 +364,62 @@ export const clientHouses = async (req, res) => {
             bathrooms,
             floors,
             bathroomType,
-            estatetype,
+            estatetype, // Expecting comma-separated string (e.g., "HOUSE,CONDO")
         } = req.query;
+        const userId = req.user.id;
 
-        const take = parseInt(limit);
-        const skip = (parseInt(page) - 1) * take;
+        const filters = {
+            userId: userId
+        };
 
-        const filters = {};
+        // Handle estate type filter
+        if (estatetype) {
+            const typesArray = estatetype.split(',').map(t => t.trim().toUpperCase());
+            filters.estatetype = {
+                hasSome: typesArray // [FIXED] Changed from 'in' to 'hasSome' for enums
+            };
+        }
 
+        // Price filter
         if (minPrice || maxPrice) {
             filters.price = {};
             if (minPrice) filters.price.gte = parseFloat(minPrice);
             if (maxPrice) filters.price.lte = parseFloat(maxPrice);
         }
 
+        // Other filters
         if (rooms) filters.rooms = parseInt(rooms);
         if (bathrooms) filters.bathrooms = parseInt(bathrooms);
         if (floors) filters.floors = parseInt(floors);
-        if (estatetype) filters.estatetype = estatetype;
         if (bathroomType) filters.bathroomType = bathroomType;
 
         const [houses, total] = await Promise.all([
             prisma.house.findMany({
                 where: filters,
-                skip,
-                take,
-                orderBy: {
-                    createdAt: "desc",
-                },
+                skip: (parseInt(page) - 1) * parseInt(limit),
+                take: parseInt(limit),
+                orderBy: { createdAt: "desc" },
                 include: {
                     images: true,
-                    user: {
-                        select: {
-                            id: true,
-                            name: true,
-                            email: true
-                        }
-                    }
-                },
+                    user: { select: { id: true, name: true, email: true } }
+                }
             }),
-            prisma.house.count({
-                where: filters,
-            }),
+            prisma.house.count({ where: filters })
         ]);
 
         res.status(200).json({
             success: true,
-            message: "Houses fetched successfully",
             houses,
             currentPage: parseInt(page),
             totalHouses: total,
-            totalPages: Math.ceil(total / take),
+            totalPages: Math.ceil(total / parseInt(limit))
         });
+
     } catch (error) {
-        console.error(error);
+        console.error("House fetch error:", error);
         res.status(500).json({
             success: false,
-            message: "Something went wrong."
+            message: "Error fetching houses"
         });
     }
 };
