@@ -26,6 +26,8 @@ function generateToken(userId, email) {
 async function setTokens(res, accessToken, refreshToken) {
   const isProduction = process.env.NODE_ENV === 'production';
   console.log("Setting cookies in environment:", isProduction ? "Production" : "Development");
+  res.header('Access-Control-Allow-Origin', 'https://real-estate-project-client-iota.vercel.app');
+  res.header('Access-Control-Allow-Credentials', 'true');
 
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
@@ -56,7 +58,7 @@ export const register = async (req, res) => {
     //   res.setHeader('Access-Control-Allow-Origin', origin);
     // }
     // res.setHeader('Access-Control-Allow-Credentials', 'true');
-    
+
     const { name, email, password } = req.body;
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -92,7 +94,7 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     console.log("LOGIN route origin:", req.headers.origin);
-    
+
     const { email, password } = req.body;
     const extractCurrentUser = await prisma.user.findUnique({
       where: { email },
@@ -140,8 +142,8 @@ export const login = async (req, res) => {
 };
 
 export const refreshAccessToken = async (req, res) => {
-  
-  
+
+
   const refreshToken = req.cookies.refreshToken;
   if (!refreshToken) {
     res.status(401).json({
@@ -170,7 +172,7 @@ export const refreshAccessToken = async (req, res) => {
       user.id,
       user.email,
     );
-    
+
     // Set our tokens
     await setTokens(res, accessToken, newRefreshToken, origin);
     res.status(200).json({
@@ -184,11 +186,11 @@ export const refreshAccessToken = async (req, res) => {
 };
 
 export const logout = async (req, res) => {
-  
-  
+
+
   res.clearCookie("accessToken");
   res.clearCookie("refreshToken");
-  
+
   res.json({
     success: true,
     message: "User logged out successfully",
