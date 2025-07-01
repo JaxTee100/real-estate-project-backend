@@ -25,7 +25,7 @@ function generateToken(userId, email) {
 
 async function setTokens(res, accessToken, refreshToken) {
   const isProduction = process.env.NODE_ENV === 'production';
-  console.log("Setting cookies in environment:", process.env.NODE_ENV);
+  console.log("Setting cookies in environment:", isProduction ? "Production" : "Development");
 
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
@@ -34,6 +34,9 @@ async function setTokens(res, accessToken, refreshToken) {
     maxAge: 60 * 60 * 1000, // 1 hour
     path: '/', // makes cookie valid across app
   });
+
+
+  console.log("Setting refresh token cookie", accessToken, refreshToken);
 
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
