@@ -32,16 +32,16 @@ async function setTokens(res, accessToken, refreshToken) {
 
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: isProduction, // true in prod, false in dev
-    sameSite: isProduction ? 'none' : 'lax', // lax in dev, none in prod
+    secure: true, // true in prod, false in dev
+    sameSite: 'none', // lax in dev, none in prod
     maxAge: 60 * 60 * 1000,
     path: '/', // Ensure the cookie is accessible across the entire site
   });
 
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: true,
+    sameSite: none,
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: '/', // Ensure the cookie is accessible across the entire site
   });
