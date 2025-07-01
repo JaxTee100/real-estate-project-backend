@@ -31,6 +31,14 @@ const corsOptions = {
 };
 
 
+
+
+
+
+app.use(cors(corsOptions));
+app.use(express.json());
+app.use(cookieParser());
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const referer = req.headers.referer;
@@ -47,14 +55,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post("/api/auth/login", (req, res, next) => {
-  console.log("LOGIN route origin:", req.headers.origin);
-  next();
-}, login);
 
-app.use(cors(corsOptions));
-app.use(express.json());
-app.use(cookieParser());
 
 
 export const prisma = new PrismaClient();
