@@ -24,28 +24,26 @@ function generateToken(userId, email) {
 }
 
 async function setTokens(res, accessToken, refreshToken) {
-  const envProd = process.env.NODE_ENV
   const isProduction = process.env.NODE_ENV === 'production';
-
-  console.log("Setting cookies in environment:", envProd);
-  
+  console.log("Setting cookies in environment:", process.env.NODE_ENV);
 
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: true, // true in prod, false in dev
-    sameSite: 'none', // lax in dev, none in prod
-    maxAge: 60 * 60 * 1000,
-    path: '/', // Ensure the cookie is accessible across the entire site
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 60 * 60 * 1000, // 1 hour
+    path: '/', // makes cookie valid across app
   });
 
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: true,
-    sameSite: none,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: '/', // Ensure the cookie is accessible across the entire site
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: '/',
   });
 }
+
 
 
 export const register = async (req, res) => {

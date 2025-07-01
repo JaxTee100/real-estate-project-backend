@@ -30,7 +30,10 @@ const corsOptions = {
 };
 
 
-
+app.use((req, res, next) => {
+  console.log("Incoming origin:", req.headers.origin);
+  next();
+});
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
