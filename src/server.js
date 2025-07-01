@@ -5,6 +5,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js";
 import houseRoutes from "./routes/houseRoutes.js";
+import { login } from "./controllers/authController.js";
 
 dotenv.config();
 const app = express();
@@ -31,9 +32,26 @@ const corsOptions = {
 
 
 app.use((req, res, next) => {
-  console.log("Incoming origin:", req.headers.origin);
+  const origin = req.headers.origin;
+  const referer = req.headers.referer;
+  const host = req.headers.host;
+
+  console.log(`[${req.method}] ${req.path}`);
+  console.log("→ Origin:", origin || "(none)");
+  console.log("→ Referer:", referer || "(none)");
+  console.log("→ Host:", host || "(none)");
+  console.log("→ Cookies:", req.headers.cookie || "(none)");
+  console.log("→ Auth Header:", req.headers.authorization || "(none)");
+  console.log("---");
+
   next();
 });
+
+app.post("/api/auth/login", (req, res, next) => {
+  console.log("LOGIN route origin:", req.headers.origin);
+  next();
+}, login);
+
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
