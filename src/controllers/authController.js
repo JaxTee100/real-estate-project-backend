@@ -1,6 +1,7 @@
 import { prisma } from "../server.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import path from "path";
 import { v4 as uuidv4 } from "uuid";
 
 // List of allowed origins (your frontend domains)
@@ -23,7 +24,10 @@ function generateToken(userId, email) {
 }
 
 async function setTokens(res, accessToken, refreshToken) {
+  const envProd = process.env.NODE_ENV
   const isProduction = process.env.NODE_ENV === 'production';
+
+  console.log("Setting cookies in environment:", envProd);
   
 
   res.cookie('accessToken', accessToken, {
@@ -31,6 +35,7 @@ async function setTokens(res, accessToken, refreshToken) {
     secure: isProduction, // true in prod, false in dev
     sameSite: isProduction ? 'none' : 'lax', // lax in dev, none in prod
     maxAge: 60 * 60 * 1000,
+    path: '/', // Ensure the cookie is accessible across the entire site
   });
 
   res.cookie('refreshToken', refreshToken, {
@@ -38,6 +43,7 @@ async function setTokens(res, accessToken, refreshToken) {
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/', // Ensure the cookie is accessible across the entire site
   });
 }
 
