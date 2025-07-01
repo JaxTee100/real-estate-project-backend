@@ -24,12 +24,14 @@ function generateToken(userId, email) {
 
 async function setTokens(res, accessToken, refreshToken) {
   const isProduction = process.env.NODE_ENV === 'production';
+  const domain = isProduction ? 'https://real-estate-api-263f.onrender.com' : undefined;
 
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     secure: isProduction, // true in prod, false in dev
     sameSite: isProduction ? 'none' : 'lax', // lax in dev, none in prod
     maxAge: 60 * 60 * 1000,
+    domain: domain, // Set domain only in production
   });
 
   res.cookie('refreshToken', refreshToken, {
@@ -37,6 +39,7 @@ async function setTokens(res, accessToken, refreshToken) {
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
+    domain: domain, // Set domain only in production
   });
 }
 
