@@ -11,49 +11,35 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      "http://localhost:3000",
-      "https://real-estate-project-client-iota.vercel.app"
-    ];
+// const corsOptions = {
+//   origin: function (origin, callback) {
+//     const allowedOrigins = [
+//       "http://localhost:3000",
+//       "https://real-estate-project-client-iota.vercel.app"
+//     ];
 
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  exposedHeaders: ["Set-Cookie"]
-};
-
-
+//     if (!origin || allowedOrigins.includes(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+//   credentials: true,
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//   allowedHeaders: ["Content-Type", "Authorization"],
+//   exposedHeaders: ["Set-Cookie"]
+// };
 
 
 
 
-app.use(cors(corsOptions));
+
+
+app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const referer = req.headers.referer;
-  const host = req.headers.host;
 
-  console.log(`[${req.method}] ${req.path}`);
-  console.log("→ Origin:", origin || "(none)");
-  console.log("→ Referer:", referer || "(none)");
-  console.log("→ Host:", host || "(none)");
-  console.log("→ Cookies:", req.headers.cookie || "(none)");
-  console.log("→ Auth Header:", req.headers.authorization || "(none)");
-  console.log("---");
-
-  next();
-});
 
 
 
