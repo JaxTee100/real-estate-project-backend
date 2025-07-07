@@ -252,7 +252,11 @@ export const updateHouse = async (req, res) => {
             rooms: !isNaN(parseInt(rooms)) ? parseInt(rooms) : existingHouse.rooms,
             floors: !isNaN(parseInt(floors)) ? parseInt(floors) : existingHouse.floors,
             bathrooms: !isNaN(parseInt(bathrooms)) ? parseInt(bathrooms) : existingHouse.bathrooms,
-            estatetype: estatetype || existingHouse.estatetype,
+            estatetype: estatetype
+                ? Array.isArray(estatetype)
+                    ? estatetype
+                    : [estatetype]
+                : existingHouse.estatetype,
             bathroomType: bathroomType || existingHouse.bathroomType,
             area: !isNaN(parseFloat(area)) ? parseFloat(area) : existingHouse.area,
             about: about || existingHouse.about,
